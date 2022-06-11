@@ -57,7 +57,7 @@ namespace souls_tongue.src
         public void WriteArray<T>(List<T> Array)
         {
             Write(Array.Count);
-            foreach(dynamic Element in Array)
+            foreach (dynamic Element in Array)
             {
                 Write(Element);
             }
@@ -97,18 +97,12 @@ namespace souls_tongue.src
 
         public void Write(FLVER2.Texture Texture)
         {
-            //Write(Texture.Path);
-
             String TextureKey = Path.GetFileNameWithoutExtension(Texture.Path).ToLowerInvariant();
 
             if (!Program.TexturePaths.ContainsKey(TextureKey))
             {
                 TextureKey = "";
             }
-
-            /*if (TextureKey == "m10_wall_sewer") TextureKey = "";
-            if (TextureKey == "m10_00_wall_stone_s") TextureKey = "";
-            if (TextureKey == "m10_obj_bone_rust_n") TextureKey = "";*/
 
             Write(TextureKey != "" ? Program.ResolveSoulsPath(Program.TexturePaths[TextureKey]) : "");
             Write(Texture.Scale.X);
@@ -160,28 +154,6 @@ namespace souls_tongue.src
             }
         }
 
-        public void Write(FLVER.Vertex Vertex)
-        {
-            Write(Vertex.Position);
-
-            Write(Vertex.BoneIndices[0]);
-            Write(Vertex.BoneIndices[1]);
-            Write(Vertex.BoneIndices[2]);
-            Write(Vertex.BoneIndices[3]);
-
-            Write(Vertex.BoneWeights[0]);
-            Write(Vertex.BoneWeights[1]);
-            Write(Vertex.BoneWeights[2]);
-            Write(Vertex.BoneWeights[3]);
-
-            WriteArray(Vertex.UVs);
-
-            Write(Vertex.Normal);
-            Write(Vertex.NormalW);
-
-            WriteArray(Vertex.Colors);
-        }
-
         public void Write(FLVER2.Material Material)
         {
             //Material
@@ -204,18 +176,72 @@ namespace souls_tongue.src
             //Mesh
             WriteArray(Mesh.BoneIndices);
             Write(Mesh.DefaultBoneIndex);
+
+            //Bone weights, sorted by bone index then by weight, because blenders API is stupid
+            List<Dictionary<float, List<int>>> BoneWeights = new();
+            Mesh.BoneIndices.ForEach(B => BoneWeights.Add(new Dictionary<float, List<int>>()));
+
+            for (int i = 0; i < Mesh.Vertices.Count; i++)
+            {
+                FLVER.Vertex V = Mesh.Vertices[i];
+                for (int j = 0; j < 4; j++)
+                {
+                    int VertBoneIndexIndex = V.BoneIndices[j];
+
+                    int BoneIndex = Mesh.BoneIndices[VertBoneIndexIndex];
+                    Dictionary<float, List<int>> CurrentWeightDict = BoneWeights[VertBoneIndexIndex];
+
+                    float CurrentBoneWeight = V.BoneWeights[j];
+                    if (!CurrentWeightDict.ContainsKey(CurrentBoneWeight))
+                    {
+                        CurrentWeightDict.Add(CurrentBoneWeight, new List<int>());
+                    }
+
+                    CurrentWeightDict[CurrentBoneWeight].Add(i);
+                }
+            }
+
+            //Send as Array of Array of pairs (of arrays)
+            Write(BoneWeights.Count);
+            foreach (Dictionary<float, List<int>> CurrWeightDict in BoneWeights)
+            {
+                Write(CurrWeightDict.Count);
+                foreach (float Key in CurrWeightDict.Keys)
+                {
+                    Write(Key);
+                    WriteArray(CurrWeightDict[Key]);
+                }
+            }
+
             Write(Mesh.MaterialIndex);
-
             WriteArray(Mesh.Vertices);
+            Write(Mesh.FaceSets[0]);
+        }
 
-            //Facesets
-            Write(Mesh.FaceSets[0]);       
+        public void Write(FLVER.Vertex Vertex)
+        {
+            Write(Vertex.Position);
+
+            WriteArray(Vertex.UVs);
+
+            Write(Vertex.Normal);
+            Write(Vertex.NormalW);
+
+            WriteArray(Vertex.Colors);
         }
 
         public void Write(FLVER2.FaceSet FaceSet)
         {
             Write((int)FaceSet.Flags);
-            WriteArray(FaceSet.Triangulate(true));
+
+            //Fake array send, we pretend to send 3-tuples of ints
+            List<int> Faces = FaceSet.Triangulate(true);
+
+            Write((int)(Faces.Count / 3));
+            foreach (int FaceVert in Faces)
+            {
+                Write(FaceVert);
+            }
         }
 
         public void Write(FLVER.Dummy Dummy)
@@ -237,14 +263,8 @@ namespace souls_tongue.src
 
         public void Write(FLVER2 Flver)
         {
-            Write(Flver.Bones.Count);
-            Write(Flver.Meshes.Count);
-            Write(Flver.Materials.Count);
-            Write(Flver.Dummies.Count);
-            Write(Flver.GXLists.Count);
-
             //Skeleton
-            WriteArray(Flver.Bones);
+            WriteArray(BlenderBone.GetBlenderBones(Flver.Bones));
 
             //Materials
             WriteArray(Flver.Materials);
@@ -264,7 +284,15 @@ namespace souls_tongue.src
             Write(Color.A);
         }
 
-}
+        public void Write(BlenderBone Bone)
+        {
+            Write(Bone.Name);
+            Write(Bone.ParentIndex);
+            Write(Bone.HeadPos);
+            Write(Bone.TailPos);
+            Write(Bone.bInitialized);
+        }
+    }
 
 public class NetworkTongueStream : TongueStream
     {

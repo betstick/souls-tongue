@@ -199,7 +199,7 @@ namespace souls_tongue
 			{
 				Dictionary<String, String> Dict = new();
 
-				StreamReader SR = new StreamReader(new FileStream("C:\\Users\\batman\\AppData\\Roaming\\Blender Foundation\\Blender\\2.93\\scripts\\addons\\souls-but-hole\\dds_paths.txt", FileMode.Open));
+				StreamReader SR = new StreamReader(new FileStream("dds_paths.txt", FileMode.Open));
 
 				while (!SR.EndOfStream)
 				{
@@ -241,9 +241,7 @@ namespace souls_tongue
 				GetAssetPaths(AssetName, Type, flverPaths);
 
 				//Send out
-				//TongueStream TS = new FileOutputTongueStream();
 				TongueStream TS = new StdOutTongueStream();
-				//TongueStream TS = new QuietTongueStream();
 
 				TS.Write(flverPaths.Count);
 				foreach(String FlverPath in flverPaths)
