@@ -199,7 +199,7 @@ namespace souls_tongue
 			{
 				Dictionary<String, String> Dict = new();
 
-				StreamReader SR = new StreamReader(new FileStream("dds_paths.txt", FileMode.Open));
+				StreamReader SR = new StreamReader(new FileStream("C:\\Users\\batman\\AppData\\Roaming\\Blender Foundation\\Blender\\2.93\\scripts\\addons\\souls-but-hole\\dds_paths.txt", FileMode.Open));
 
 				while (!SR.EndOfStream)
 				{

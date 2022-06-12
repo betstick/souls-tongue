@@ -10,347 +10,307 @@ using static SoulsFormats.MTD;
 
 namespace souls_tongue.src
 {
-    public abstract class TongueStream
-    {
-        //Needs to be called so we can flush buffered streams at the end
-        public virtual void Close()
-        {
+	public abstract class TongueStream
+	{
+		//Needs to be called so we can flush buffered streams at the end
+		public virtual void Close()
+		{
 
-        }
+		}
 
-        // Basic serialization methods
-        public void Write<T>(T Message)
-        {
-            throw new NotImplementedException();
-        }
+		// Basic serialization methods
+		public void Write<T>(T Message)
+		{
+			throw new NotImplementedException();
+		}
 
-        public abstract void Write(Byte[] Message);
+		public abstract void Write(Byte[] Message);
 
-        public void Write(int Message)
-        {
-            Write(BitConverter.GetBytes(Message));
-        }
+		public void Write(int Message)
+		{
+			Write(BitConverter.GetBytes(Message));
+		}
 
-        public void Write(short Message)
-        {
-            Write((int)Message);
-        }
+		public void Write(short Message)
+		{
+			Write((int)Message);
+		}
 
-        public void Write(float Message)
-        {
-            Write(BitConverter.GetBytes(Message));
-        }
+		public void Write(float Message)
+		{
+			Write(BitConverter.GetBytes(Message));
+		}
 
-        public void Write(bool Message)
-        {
-            Write(BitConverter.GetBytes(Message));
-        }
+		public void Write(bool Message)
+		{
+			Write(BitConverter.GetBytes(Message));
+		}
 
-        public void Write(String Message)
-        {
-            Byte[] UTFBytes = System.Text.Encoding.UTF8.GetBytes(Message);
-            Byte[] LenBytes = BitConverter.GetBytes(UTFBytes.Length);
+		public void Write(String Message)
+		{
+			Byte[] UTFBytes = System.Text.Encoding.UTF8.GetBytes(Message);
+			Byte[] LenBytes = BitConverter.GetBytes(UTFBytes.Length);
 
-            Write(LenBytes);
-            Write(UTFBytes);
-        }
-        public void WriteArray<T>(List<T> Array)
-        {
-            Write(Array.Count);
-            foreach (dynamic Element in Array)
-            {
-                Write(Element);
-            }
-        }
+			Write(LenBytes);
+			Write(UTFBytes);
+		}
+		public void WriteArray<T>(List<T> Array)
+		{
+			Write(Array.Count);
+			foreach (dynamic Element in Array)
+			{
+				Write(Element);
+			}
+		}
 
-        public void WriteArrayComplex<T>(List<T> Array, Action<T> SerializeElementFunc)
-        {
-            Write(Array.Count);
-            foreach (T Element in Array)
-            {
-                SerializeElementFunc(Element);
-            }
-        }
+		public void WriteArrayComplex<T>(List<T> Array, Action<T> SerializeElementFunc)
+		{
+			Write(Array.Count);
+			foreach (T Element in Array)
+			{
+				SerializeElementFunc(Element);
+			}
+		}
 
-        // Specific serializations for Souls types
-        public void Write(System.Numerics.Vector3 Vector)
-        {
-            Write(Vector.X);
-            Write(Vector.Y);
-            Write(Vector.Z);
-        }
+		// Specific serializations for Souls types
+		public void Write(System.Numerics.Vector3 Vector)
+		{
+			Write(Vector.X);
+			Write(Vector.Y);
+			Write(Vector.Z);
+		}
 
-        public void Write(FLVER.Bone Bone)
-        {
-            Write(Bone.Name);
+		public void Write(FLVER.Bone Bone)
+		{
+			Write(Bone.Name);
 
-            Write(Bone.Translation);
-            Write(Bone.Rotation);
-            Write(Bone.Scale);
+			Write(Bone.Translation);
+			Write(Bone.Rotation);
+			Write(Bone.Scale);
 
-            //Parent
-            Write(Bone.ParentIndex);
-            Write(Bone.ChildIndex);
-            Write(Bone.NextSiblingIndex);
-            Write(Bone.PreviousSiblingIndex);
-        }
+			//Parent
+			Write(Bone.ParentIndex);
+			Write(Bone.ChildIndex);
+			Write(Bone.NextSiblingIndex);
+			Write(Bone.PreviousSiblingIndex);
+		}
 
-        public void Write(FLVER2.Texture Texture)
-        {
-            String TextureKey = Path.GetFileNameWithoutExtension(Texture.Path).ToLowerInvariant();
+		public void Write(FLVER2.Texture Texture)
+		{
+			String TextureKey = Path.GetFileNameWithoutExtension(Texture.Path).ToLowerInvariant();
 
-            if (!Program.TexturePaths.ContainsKey(TextureKey))
-            {
-                TextureKey = "";
-            }
+			if (!Program.TexturePaths.ContainsKey(TextureKey))
+			{
+				TextureKey = "";
+			}
 
-            Write(TextureKey != "" ? Program.ResolveSoulsPath(Program.TexturePaths[TextureKey]) : "");
-            Write(Texture.Scale.X);
-            Write(Texture.Scale.Y);
-            Write(Texture.Type);
-        }
+			Write(TextureKey != "" ? Program.ResolveSoulsPath(Program.TexturePaths[TextureKey]) : "");
+			//Write(Texture.Path);
+			Write(Texture.Scale.X);
+			Write(Texture.Scale.Y);
+			Write(Texture.Type);
+		}
 
-        public void Write(Param MTDParam)
-        {
-            Write(MTDParam.Name);
-            Write((int)MTDParam.Type);
+		public void Write(Param MTDParam)
+		{
+			Write(MTDParam.Name);
+			Write((int)MTDParam.Type);
 
-            switch (MTDParam.Type)
-            {
-                case ParamType.Bool:
-                    Write((bool)MTDParam.Value);
-                    break;
-                case ParamType.Int:
-                    Write((int)MTDParam.Value);
-                    break;
-                case ParamType.Int2:
-                    int[] Int2 = (int[])MTDParam.Value;
-                    Write(Int2[0]);
-                    Write(Int2[1]);
-                    break;
-                case ParamType.Float:
-                    Write((float)MTDParam.Value);
-                    break;
-                case ParamType.Float2:
-                    float[] Float2 = (float[])MTDParam.Value;
-                    Write(Float2[0]);
-                    Write(Float2[1]);
-                    break;
-                case ParamType.Float3:
-                    float[] Float3 = (float[])MTDParam.Value;
-                    Write(Float3[0]);
-                    Write(Float3[1]);
-                    Write(Float3[2]);
-                    break;
-                case ParamType.Float4:
-                    float[] Float4 = (float[])MTDParam.Value;
-                    Write(Float4[0]);
-                    Write(Float4[1]);
-                    Write(Float4[2]);
-                    Write(Float4[3]);
-                    break;
-                default:
-                    break;
-            }
-        }
+			switch (MTDParam.Type)
+			{
+				case ParamType.Bool:
+					Write((bool)MTDParam.Value);
+					break;
+				case ParamType.Int:
+					Write((int)MTDParam.Value);
+					break;
+				case ParamType.Int2:
+					int[] Int2 = (int[])MTDParam.Value;
+					Write(Int2[0]);
+					Write(Int2[1]);
+					break;
+				case ParamType.Float:
+					Write((float)MTDParam.Value);
+					break;
+				case ParamType.Float2:
+					float[] Float2 = (float[])MTDParam.Value;
+					Write(Float2[0]);
+					Write(Float2[1]);
+					break;
+				case ParamType.Float3:
+					float[] Float3 = (float[])MTDParam.Value;
+					Write(Float3[0]);
+					Write(Float3[1]);
+					Write(Float3[2]);
+					break;
+				case ParamType.Float4:
+					float[] Float4 = (float[])MTDParam.Value;
+					Write(Float4[0]);
+					Write(Float4[1]);
+					Write(Float4[2]);
+					Write(Float4[3]);
+					break;
+				default:
+					break;
+			}
+		}
 
-        public void Write(FLVER2.Material Material)
-        {
-            //Material
-            Write(Material.Name);
-            Write(Material.MTD);
-            Write(Material.Flags);
-            Write(Material.GXIndex);
-            WriteArray(Material.Textures);
+		public void Write(FLVER2.Material Material)
+		{
+			//Material
+			Write(Material.Name);
+			Write(Material.MTD);
+			Write(Material.Flags);
+			Write(Material.GXIndex);
+			WriteArray(Material.Textures);
 
-            //MTD
-            String name = Material.MTD.Split("\\").Last();
-            String path = Program.dataPath + "\\mtd\\Mtd-mtdbnd\\" + name;
-            MTD mtd = SoulsFile<MTD>.Read(path);
+			//MTD
+			String name = Material.MTD.Split("\\").Last();
+			String path = Program.dataPath + "\\mtd\\Mtd-mtdbnd\\" + name;
+			MTD mtd = SoulsFile<MTD>.Read(path);
 
-            WriteArray(mtd.Params);
-        }
+			WriteArray(mtd.Params);
+		}
 
-        public void Write(FLVER2.Mesh Mesh)
-        {
-            //Mesh
-            WriteArray(Mesh.BoneIndices);
-            Write(Mesh.DefaultBoneIndex);
+		public void Write(FLVER2.Mesh Mesh)
+		{
+			//Mesh
+			WriteArray(Mesh.BoneIndices);
+			Write(Mesh.DefaultBoneIndex);
+			Write(Mesh.MaterialIndex);
 
-            //Bone weights, sorted by bone index then by weight, because blenders API is stupid
-            List<Dictionary<float, List<int>>> BoneWeights = new();
-            Mesh.BoneIndices.ForEach(B => BoneWeights.Add(new Dictionary<float, List<int>>()));
+			WriteArray(Mesh.Vertices);
 
-            for (int i = 0; i < Mesh.Vertices.Count; i++)
-            {
-                FLVER.Vertex V = Mesh.Vertices[i];
-                for (int j = 0; j < 4; j++)
-                {
-                    int VertBoneIndexIndex = V.BoneIndices[j];
+			//Facesets
+			Write(Mesh.FaceSets[0]);
+		}
 
-                    int BoneIndex = Mesh.BoneIndices[VertBoneIndexIndex];
-                    Dictionary<float, List<int>> CurrentWeightDict = BoneWeights[VertBoneIndexIndex];
+		public void Write(FLVER.Vertex Vertex)
+		{
+			Write(Vertex.Position);
 
-                    float CurrentBoneWeight = V.BoneWeights[j];
-                    if (!CurrentWeightDict.ContainsKey(CurrentBoneWeight))
-                    {
-                        CurrentWeightDict.Add(CurrentBoneWeight, new List<int>());
-                    }
+			Write(Vertex.BoneIndices[0]);
+			Write(Vertex.BoneIndices[1]);
+			Write(Vertex.BoneIndices[2]);
+			Write(Vertex.BoneIndices[3]);
 
-                    CurrentWeightDict[CurrentBoneWeight].Add(i);
-                }
-            }
+			Write(Vertex.BoneWeights[0]);
+			Write(Vertex.BoneWeights[1]);
+			Write(Vertex.BoneWeights[2]);
+			Write(Vertex.BoneWeights[3]);
 
-            //Send as Array of Array of pairs (of arrays)
-            Write(BoneWeights.Count);
-            foreach (Dictionary<float, List<int>> CurrWeightDict in BoneWeights)
-            {
-                Write(CurrWeightDict.Count);
-                foreach (float Key in CurrWeightDict.Keys)
-                {
-                    Write(Key);
-                    WriteArray(CurrWeightDict[Key]);
-                }
-            }
+			WriteArray(Vertex.UVs);
 
-            Write(Mesh.MaterialIndex);
-            WriteArray(Mesh.Vertices);
-            Write(Mesh.FaceSets[0]);
-        }
+			Write(Vertex.Normal);
+			Write(Vertex.NormalW);
 
-        public void Write(FLVER.Vertex Vertex)
-        {
-            Write(Vertex.Position);
+			WriteArray(Vertex.Colors);
+		}
 
-            WriteArray(Vertex.UVs);
+		public void Write(FLVER2.FaceSet FaceSet)
+		{
+			Write((int)FaceSet.Flags);
+			WriteArray(FaceSet.Triangulate(true));
+		}
 
-            Write(Vertex.Normal);
-            Write(Vertex.NormalW);
+		public void Write(FLVER.Dummy Dummy)
+		{
+			Write(Dummy.ReferenceID);
 
-            WriteArray(Vertex.Colors);
-        }
+			Write(-Dummy.Position.X);
+			Write(-Dummy.Position.Z);
+			Write(Dummy.Position.Y);
+			
+			Write(-Dummy.Upward.X);
+			Write(-Dummy.Upward.Z);
+			Write(Dummy.Upward.Y);
 
-        public void Write(FLVER2.FaceSet FaceSet)
-        {
-            Write((int)FaceSet.Flags);
+			Write(Dummy.UseUpwardVector);
+			Write(Dummy.AttachBoneIndex);
+			Write(Dummy.ParentBoneIndex);
+		}
 
-            //Fake array send, we pretend to send 3-tuples of ints
-            List<int> Faces = FaceSet.Triangulate(true);
+		public void Write(FLVER2 Flver)
+		{
+			//Skeleton
+			WriteArray(Flver.Bones);
 
-            Write((int)(Faces.Count / 3));
-            foreach (int FaceVert in Faces)
-            {
-                Write(FaceVert);
-            }
-        }
+			//Import Mesh
+			WriteArray(Flver.Meshes);
 
-        public void Write(FLVER.Dummy Dummy)
-        {
-            Write(Dummy.ReferenceID);
+			//Dummies
+			WriteArray(Flver.Dummies);
 
-            Write(-Dummy.Position.X);
-            Write(-Dummy.Position.Z);
-            Write(Dummy.Position.Y);
-            
-            Write(-Dummy.Upward.X);
-            Write(-Dummy.Upward.Z);
-            Write(Dummy.Upward.Y);
+			//Materials
+			WriteArray(Flver.Materials);
+		}
 
-            Write(Dummy.UseUpwardVector);
-            Write(Dummy.AttachBoneIndex);
-            Write(Dummy.ParentBoneIndex);
-        }
-
-        public void Write(FLVER2 Flver)
-        {
-            //Skeleton
-            WriteArray(BlenderBone.GetBlenderBones(Flver.Bones));
-
-            //Materials
-            WriteArray(Flver.Materials);
-
-            //Import Mesh
-            WriteArray(Flver.Meshes);
-
-            //Dummies
-            WriteArray(Flver.Dummies);
-        }
-
-        public void Write(FLVER.VertexColor Color)
-        {
-            Write(Color.R);
-            Write(Color.G);
-            Write(Color.B);
-            Write(Color.A);
-        }
-
-        public void Write(BlenderBone Bone)
-        {
-            Write(Bone.Name);
-            Write(Bone.ParentIndex);
-            Write(Bone.HeadPos);
-            Write(Bone.TailPos);
-            Write(Bone.bInitialized);
-        }
-    }
+		public void Write(FLVER.VertexColor Color)
+		{
+			Write(Color.R);
+			Write(Color.G);
+			Write(Color.B);
+			Write(Color.A);
+		}
+	}
 
 public class NetworkTongueStream : TongueStream
-    {
-        NetworkStream TCPStream;
-        public NetworkTongueStream(NetworkStream TCPStream)
-        {
-            this.TCPStream = TCPStream;
-        }
-        public override void Write(Byte[] Message)
-        {
-            TCPStream.Write(Message, 0, Message.Length);
-        }
-    }
+	{
+		NetworkStream TCPStream;
+		public NetworkTongueStream(NetworkStream TCPStream)
+		{
+			this.TCPStream = TCPStream;
+		}
+		public override void Write(Byte[] Message)
+		{
+			TCPStream.Write(Message, 0, Message.Length);
+		}
+	}
 
-    public class StdOutTongueStream : TongueStream
-    {
-        protected Stream S;
-        public StdOutTongueStream()
-        {
-            S = new BufferedStream(Console.OpenStandardOutput());
-        }
-        public override void Write(byte[] Message)
-        {
-            S.Write(Message, 0, Message.Length);
-        }
+	public class StdOutTongueStream : TongueStream
+	{
+		protected Stream S;
+		public StdOutTongueStream()
+		{
+			S = new BufferedStream(Console.OpenStandardOutput());
+		}
+		public override void Write(byte[] Message)
+		{
+			S.Write(Message, 0, Message.Length);
+		}
 
-        public override void Close()
-        {
-             S.Close();
-        }
-    }
+		public override void Close()
+		{
+			 S.Close();
+		}
+	}
 
-    public class DebugTongueStream : TongueStream
-    {
-        public override void Write(byte[] Message)
-        {
-            String ByteString = string.Join(", ", Message.Select(b => b.ToString()));
-            Console.Write(ByteString, 0, ByteString.Length);
-        }
-    }
+	public class DebugTongueStream : TongueStream
+	{
+		public override void Write(byte[] Message)
+		{
+			String ByteString = string.Join(", ", Message.Select(b => b.ToString()));
+			Console.Write(ByteString, 0, ByteString.Length);
+		}
+	}
 
-    public class FileOutputTongueStream : TongueStream
-    {
-        protected Stream F;
-        public FileOutputTongueStream()
-        {
-            F = new BufferedStream(new FileStream("dump_buffered.txt", FileMode.Create));
-        }
-        public override void Write(byte[] Message)
-        {
-            F.Write(Message, 0, Message.Length);
-        }
-    }
+	public class FileOutputTongueStream : TongueStream
+	{
+		protected Stream F;
+		public FileOutputTongueStream()
+		{
+			F = new BufferedStream(new FileStream("dump_buffered.txt", FileMode.Create));
+		}
+		public override void Write(byte[] Message)
+		{
+			F.Write(Message, 0, Message.Length);
+		}
+	}
 
-    public class QuietTongueStream : TongueStream
-    {
-        public override void Write(byte[] Message)
-        {
-        }
-    }
+	public class QuietTongueStream : TongueStream
+	{
+		public override void Write(byte[] Message)
+		{
+		}
+	}
 }
