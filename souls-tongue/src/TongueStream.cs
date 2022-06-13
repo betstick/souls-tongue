@@ -105,6 +105,7 @@ namespace souls_tongue.src
             }
 
             Write(TextureKey != "" ? Program.ResolveSoulsPath(Program.TexturePaths[TextureKey]) : "");
+            //Write(Texture.Path);
             Write(Texture.Scale.X);
             Write(Texture.Scale.Y);
             Write(Texture.Type);
@@ -176,43 +177,6 @@ namespace souls_tongue.src
             //Mesh
             WriteArray(Mesh.BoneIndices);
             Write(Mesh.DefaultBoneIndex);
-
-            //Bone weights, sorted by bone index then by weight, because blenders API is stupid
-            List<Dictionary<float, List<int>>> BoneWeights = new();
-            Mesh.BoneIndices.ForEach(B => BoneWeights.Add(new Dictionary<float, List<int>>()));
-
-            for (int i = 0; i < Mesh.Vertices.Count; i++)
-            {
-                FLVER.Vertex V = Mesh.Vertices[i];
-                for (int j = 0; j < 4; j++)
-                {
-                    int VertBoneIndexIndex = V.BoneIndices[j];
-
-                    int BoneIndex = Mesh.BoneIndices[VertBoneIndexIndex];
-                    Dictionary<float, List<int>> CurrentWeightDict = BoneWeights[VertBoneIndexIndex];
-
-                    float CurrentBoneWeight = V.BoneWeights[j];
-                    if (!CurrentWeightDict.ContainsKey(CurrentBoneWeight))
-                    {
-                        CurrentWeightDict.Add(CurrentBoneWeight, new List<int>());
-                    }
-
-                    CurrentWeightDict[CurrentBoneWeight].Add(i);
-                }
-            }
-
-            //Send as Array of Array of pairs (of arrays)
-            Write(BoneWeights.Count);
-            foreach (Dictionary<float, List<int>> CurrWeightDict in BoneWeights)
-            {
-                Write(CurrWeightDict.Count);
-                foreach (float Key in CurrWeightDict.Keys)
-                {
-                    Write(Key);
-                    WriteArray(CurrWeightDict[Key]);
-                }
-            }
-
             Write(Mesh.MaterialIndex);
             WriteArray(Mesh.Vertices);
             Write(Mesh.FaceSets[0]);
@@ -221,6 +185,16 @@ namespace souls_tongue.src
         public void Write(FLVER.Vertex Vertex)
         {
             Write(Vertex.Position);
+
+            Write(Vertex.BoneIndices[0]);
+            Write(Vertex.BoneIndices[1]);
+            Write(Vertex.BoneIndices[2]);
+            Write(Vertex.BoneIndices[3]);
+
+            Write(Vertex.BoneWeights[0]);
+            Write(Vertex.BoneWeights[1]);
+            Write(Vertex.BoneWeights[2]);
+            Write(Vertex.BoneWeights[3]);
 
             WriteArray(Vertex.UVs);
 
@@ -251,7 +225,7 @@ namespace souls_tongue.src
             Write(-Dummy.Position.X);
             Write(-Dummy.Position.Z);
             Write(Dummy.Position.Y);
-            
+
             Write(-Dummy.Upward.X);
             Write(-Dummy.Upward.Z);
             Write(Dummy.Upward.Y);
@@ -292,9 +266,10 @@ namespace souls_tongue.src
             Write(Bone.TailPos);
             Write(Bone.bInitialized);
         }
+
     }
 
-public class NetworkTongueStream : TongueStream
+    public class NetworkTongueStream : TongueStream
     {
         NetworkStream TCPStream;
         public NetworkTongueStream(NetworkStream TCPStream)
