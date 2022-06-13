@@ -110,6 +110,7 @@ namespace souls_tongue
 
 		public static String dataPath;
 		public static String yabberPath;
+		public static String cachePath;
 
 		public static Dictionary<String, String> TexturePaths;
 
@@ -194,12 +195,13 @@ namespace souls_tongue
 
 			dataPath = args[0].Replace("\"", "").Replace("/","\\");
 			yabberPath = args[1].Replace("\"","").Replace("/", "\\");
+			cachePath = args[2].Replace("\"","").Replace("/", "\\");
 
 			TexturePaths = ((Func<Dictionary<String, String>>)(() =>
 			{
 				Dictionary<String, String> Dict = new();
 
-				StreamReader SR = new StreamReader(new FileStream("dds_paths.txt", FileMode.Open));
+				StreamReader SR = new StreamReader(new FileStream(cachePath, FileMode.Open));
 
 				while (!SR.EndOfStream)
 				{
@@ -215,7 +217,7 @@ namespace souls_tongue
 				return Dict;
 			}))();
 
-			String Command = args[2];
+			String Command = args[3];
 
 			if (IsRegexMatching(Command, "^[^\\s]+\\s+[^\\s]+$"))
 			{
