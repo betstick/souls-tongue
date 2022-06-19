@@ -12,7 +12,7 @@ namespace souls_tongue.src
     {
         static Vector3 ShortVector = new Vector3(0f, 0.05f, 0f);
         static BlenderBone Default = new BlenderBone("", -1, Vector3.Zero, Vector3.Zero, false);
-        BlenderBone(String Name, int ParentIndex, Vector3 HeadPos, Vector3 TailPos, bool bInitialized)
+        BlenderBone(String Name, short ParentIndex, Vector3 HeadPos, Vector3 TailPos, bool bInitialized)
         {
             this.Name = Name;
             this.ParentIndex = ParentIndex;
@@ -22,7 +22,7 @@ namespace souls_tongue.src
         }
 
         public String Name;
-        public int ParentIndex;
+        public short ParentIndex;
         public Vector3 HeadPos;
         public Vector3 TailPos;
         public bool bInitialized;

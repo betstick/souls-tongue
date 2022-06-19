@@ -10,24 +10,81 @@ using System.Diagnostics;
 namespace souls_tongue
 {
 	public enum AssetType
-    {
+	{
 		Character,
 		Map,
 		Part,
 		Object
-    }
+	}
 	class Program
 	{
+		public static List<String> GetFilesRecursive(String dirPath)
+		{
+			List<String> filePaths = new();
+
+			DirectoryInfo di = new DirectoryInfo(dirPath);
+
+			foreach(DirectoryInfo dir in di.GetDirectories("*", System.IO.SearchOption.AllDirectories))
+			{
+				foreach(FileInfo fi in dir.EnumerateFiles())
+				{
+					filePaths.Add(fi.FullName);
+				}
+			}
+
+			return filePaths;
+		}
+		public static void GenerateCache(String searchPath, String outputPath)
+		{
+			List<String> cache = new List<string>();
+			Stack<String> dirStack = new();
+			dirStack.Push(searchPath);
+
+			while(dirStack.Count > 0)
+			{
+				List<String> files = GetFilesRecursive(dirStack.Pop());
+
+				foreach (String file in files)
+				{
+					String bndDirPath = ResolvePossibleBinderPath(file);
+
+					if (Directory.Exists(bndDirPath))
+					{
+						dirStack.Push(bndDirPath);
+					}
+					else if (File.Exists(bndDirPath))
+					{
+						cache.Add(file);
+					}
+				}
+			}
+			using (StreamWriter sw = File.CreateText(outputPath))
+			{
+				foreach(String line in cache)
+				{
+					sw.WriteLine(line);
+				}
+			}
+		}
+
 		public static String GetTrimmedExtension(String FileName)
-        {
-			string[] Delim = { "-", "." };
-			string[] SplitFileName = FileName.Split(Delim, StringSplitOptions.None);
-			int L = SplitFileName.Length;
+		{
+			//split on first occurence of . or -
+			string[] SplitFileName = new string[2];
+			if (FileName.Contains("."))
+			{
+				SplitFileName = FileName.Split(new[] { '.' }, 2);
+			}
+			else if (FileName.Contains("-"))
+			{
+				SplitFileName = FileName.Split(new[] { '-' }, 2);
+			}
 
-			return L > 0 ? SplitFileName[L - 1] : "";
-        }
+			return SplitFileName[1];
+		}
 
-		public static void GetAssetPaths(String AssetName, AssetType Type, List<String> flverPaths, List<String> animationPaths = null, List<String> skeletonPaths = null, List<String> taePaths = null)
+		public static void GetAssetPaths(String AssetName, AssetType Type, List<String> flverPaths, 
+			List<String> animationPaths = null, List<String> skeletonPaths = null, List<String> taePaths = null)
 		{
 			Func<String, List<String>> GetPathList = FileName =>
 			{
@@ -57,6 +114,15 @@ namespace souls_tongue
 					AddSearchPath("chr/{0}.chrbnd");
 					AddSearchPath("chr/{0}.anibnd");
 					AddSearchPath("chr/{0}");
+					//DS3 stuff
+					AddSearchPath("chr/{0}.anibnd.dcx");
+					//AddSearchPath("chr/{0}-anibnd-dcx");
+					AddSearchPath("chr/{0}.chrbnd.dcx");
+					//AddSearchPath("chr/{0}-chrbnd-dcx");
+					AddSearchPath("chr/{0}.bdhbnd.dcx");
+					//AddSearchPath("chr/{0}-bdhbnd-dcx");
+					AddSearchPath("chr/{0}.texbnd.dcx");
+					//AddSearchPath("chr/{0}-texbnd-dcx");
 					break;
 				case AssetType.Map:
 					String ShortMapName = AssetName.Split("_")[0];
@@ -76,26 +142,26 @@ namespace souls_tongue
 			}
 
 			foreach(String SearchPath in SearchPaths)
-            {
+			{
 				//TODO: can we narrow this down with a more restrictive search pattern
 				if (!Directory.Exists(SearchPath))
-                {
+				{
 					continue;
-                }
+				}
 
 				string[] AllFileNames = Directory.GetFiles(SearchPath, "*", SearchOption.AllDirectories);
-                
+				
 				foreach (String FileName in AllFileNames)
 				{
 					String CurrPath = ResolvePossibleBinderPath(FileName);
 					List<String> PathArray = GetPathList(Path.GetFileName(CurrPath));
 					if (PathArray != null)
-                    {
+					{
 						PathArray.Add(CurrPath);
-                    }
+					}
 
-                }
-            }
+				}
+			}
 		}
 
 		public static bool IsRegexMatching(string Input, string Pattern)
@@ -115,29 +181,33 @@ namespace souls_tongue
 		public static Dictionary<String, String> TexturePaths;
 
 		public static String ResolvePossibleBinderPath(String FullPath)
-        {
-			HashSet<String> BinderExtensions = new HashSet<String>() { "chrbnd", "anibnd", "partsbnd", "objbnd", "tpf", "mtdbnd" };
+		{
+			HashSet<String> BinderExtensions = new HashSet<String>() {
+				"chrbnd", "anibnd", "partsbnd", "objbnd", "tpf", "mtdbnd", "behbnd", "texbnd", "tpfbhd",
+				"chrbnd.dcx", "anibnd.dcx", "partsbnd.dcx", "objbnd.dcx", "tpf.dcx", "mtdbnd.dcx", 
+				"behbnd.dcx", "texbnd.dcx", "tpfbhd.dcx", "tpf.old"
+			};
 
 			String Extension = GetTrimmedExtension(FullPath);
 
 			Func<String> GetBinderResolvedName = () =>
 			{
 				String DirName = Path.GetDirectoryName(FullPath);
-				String NakedFileName = Path.GetFileNameWithoutExtension(FullPath);
+				String NakedFileName = Path.GetFileName(FullPath).Split(".")[0];
 
-				return Path.GetFullPath(NakedFileName + "-" + Extension, DirName);
+				return Path.GetFullPath(NakedFileName + "-" + Extension.Replace(".","-"), DirName);
 			};
 
 			if (!BinderExtensions.Contains(Extension))
-            {
+			{
 				return FullPath;
 			}
 
-			String AlreadyUnpackedDirName = Path.GetFileNameWithoutExtension(FullPath) + "-" + Extension;
+			String AlreadyUnpackedDirName = Path.GetFileName(FullPath).Split(".")[0] + "-" + Extension.Replace(".","-");
 			if (Directory.Exists(Path.GetDirectoryName(FullPath) + Path.DirectorySeparatorChar + AlreadyUnpackedDirName))
-            {
+			{
 				return GetBinderResolvedName();
-            }
+			}
 
 			//Unpack with Yabber and adjust path
 			ProcessStartInfo startInfo = new ProcessStartInfo();
@@ -152,6 +222,19 @@ namespace souls_tongue
 			// Call WaitForExit and then the using statement will close.
 			using (Process exeProcess = Process.Start(startInfo))
 			{
+				while (!exeProcess.HasExited)
+				{
+					foreach (ProcessThread t in exeProcess.Threads)
+					{
+						if (t.ThreadState == System.Diagnostics.ThreadState.Wait && t.WaitReason == ThreadWaitReason.UserRequest)
+						{
+							//kill on errors, and return original path
+							exeProcess.Kill();
+							return FullPath;
+						}
+					}
+				}
+				
 				exeProcess.WaitForExit();
 			}
 
@@ -159,26 +242,26 @@ namespace souls_tongue
 		}
 
 		public static String ResolveSoulsPath(String RelativePath)
-        {
+		{
 			//Normalize path and split up
 			String NormalizedPath = Path.GetRelativePath(dataPath, Path.GetFullPath(RelativePath, dataPath));
 
 			if (NormalizedPath == ".")
-            {
+			{
 				return dataPath;
-            }
+			}
 
 			String[] Dirs = NormalizedPath.Split(Path.DirectorySeparatorChar);
 
 			String LoopPath = dataPath;
 			for (int i = 0; i < Dirs.Length; i++)
-            {
+			{
 				String CurrPath = Path.GetFullPath(Dirs[i], LoopPath);
 
 				FileInfo CurrFile = new FileInfo(CurrPath);
 
 				if (CurrFile.Exists)
-                {
+				{
 					LoopPath = ResolvePossibleBinderPath(CurrPath);
 					continue;
 				}
@@ -187,7 +270,7 @@ namespace souls_tongue
 			}
 
 			return LoopPath;
-        }
+		}
 
 		static void Main(String[] args)
 		{
@@ -196,6 +279,11 @@ namespace souls_tongue
 			dataPath = args[0].Replace("\"", "").Replace("/","\\");
 			yabberPath = args[1].Replace("\"","").Replace("/", "\\");
 			cachePath = args[2].Replace("\"","").Replace("/", "\\");
+
+			if (!File.Exists(cachePath))
+			{
+				GenerateCache(dataPath, cachePath);
+			}
 
 			TexturePaths = ((Func<Dictionary<String, String>>)(() =>
 			{
@@ -245,15 +333,25 @@ namespace souls_tongue
 				//Send out
 				TongueStream TS = new StdOutTongueStream();
 
+				//HACKY MSB1 EXPORTER
+				if (Type == AssetType.Map)
+				{
+					String msbName = AssetName + ".msb";
+					String msbPath = dataPath + "\\Map\\MapStudio\\" + msbName;
+					MSB1 msb = MSB1.Read(msbPath);
+					TS.Write(msb);
+				}
+				//END OF MSB1 EXPORTER
+
 				TS.Write(flverPaths.Count);
 				foreach(String FlverPath in flverPaths)
-                {
+				{
 					String FlverName = Path.GetFileNameWithoutExtension(FlverPath);
 
 					FLVER2 CurrentFlver = FLVER2.Read(FlverPath);
 					TS.Write(FlverName);
 					TS.Write(CurrentFlver);
-                }
+				}
 
 				TS.Close();				
 			}
